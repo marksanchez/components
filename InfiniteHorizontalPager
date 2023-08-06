@@ -1,0 +1,57 @@
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun <T> InfiniteHorizontalPager(
+    items: List<T>,
+    autoRotate: Boolean = true,
+    content: @Composable (T) -> Unit
+) {
+    val pagerState = rememberPagerState(initialPage = 1)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scrolling by pagerState.interactionSource.collectIsDraggedAsState()
+
+    val rotatingList = items.toMutableList()
+    rotatingList.add(0, rotatingList.last())
+    rotatingList.add(rotatingList.first())
+
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { }
+            ),
+        pageCount = rotatingList.size,
+        verticalAlignment = Alignment.CenterVertically
+    ) { page ->
+        // Use modulo to get the actual item from the list
+        val item = rotatingList[page % items.size]
+        content(item)
+    }
+
+    LaunchedEffect(
+        key1 = pagerState.currentPage,
+        key2 = pagerState.isScrollInProgress
+    ) {
+        when {
+            pagerState.currentPage == items.size + 1 && !pagerState.isScrollInProgress -> {
+                pagerState.scrollToPage(1)
+            }
+
+            pagerState.currentPage == 0 && !pagerState.isScrollInProgress -> {
+                pagerState.scrollToPage(items.size)
+            }
+        }
+    }
+
+    if (autoRotate) {
+        LaunchedEffect(pressed, scrolling) {
+            while (!pressed && !scrolling) {
+                delay(500)
+                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+            }
+        }
+    }
+}
